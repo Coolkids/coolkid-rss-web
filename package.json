@@ -1,0 +1,42 @@
+{
+  "name": "coolkid-rss-web",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Responsive RSS management UI built with Vue 3 and Quasar",
+  "scripts": {
+    "dev": "quasar dev",
+    "build": "quasar build",
+    "build:staging": "QUASAR_ENV=staging quasar build",
+    "lint": "eslint src --ext .ts,.vue",
+    "typecheck": "vue-tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@quasar/extras": "^2.0.4",
+    "axios": "^1.20.0",
+    "dompurify": "^3.2.7",
+    "quasar": "^2.30.1",
+    "vue": "^3.5.42",
+    "vue-router": "^5.1.0"
+  },
+  "devDependencies": {
+    "@quasar/app-vite": "^3.8.1",
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "eslint": "^9.35.0",
+    "eslint-plugin-vue": "^10.4.0",
+    "husky": "^9.1.7",
+    "sass-embedded": "^1.91.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.0.6"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  }
+}
