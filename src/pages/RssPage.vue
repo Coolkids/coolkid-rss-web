@@ -45,7 +45,7 @@
       </aside>
 
       <main class="reader-main">
-        <section class="workspace-panel reader-toolbar">
+        <section class="workspace-panel reader-toolbar" :class="{ 'reader-toolbar--hidden': !toolbarVisible }">
           <div class="reader-mobile-source">
             <q-select :model-value="filters.feedId" outlined dense emit-value map-options :options="feedOptions"
                       label="订阅来源" :loading="sourcesLoading" @update:model-value="selectSource">
@@ -157,6 +157,8 @@
 
     <q-btn v-if="showScrollTop" class="reader-scroll-top" round unelevated color="primary"
            icon="keyboard_arrow_up" aria-label="回到顶部" @click="scrollToTop"/>
+    <q-btn v-if="!toolbarVisible" class="reader-toolbar-reveal" flat round icon="search"
+           aria-label="显示搜索栏" @click="showToolbar"/>
 
     <q-dialog v-model="filtersOpen" :position="$q.screen.lt.md ? 'bottom' : 'standard'">
       <q-card class="workspace-dialog reader-filter-dialog">
@@ -282,8 +284,10 @@ const filtersOpen = ref(false), detailOpen = ref(false), downloadOpen = ref(fals
 const activeRecord = ref<RssRecord | null>(null), dateError = ref('')
 const page = ref(1), maxPage = ref(1), total = ref(0)
 const showScrollTop = ref(false)
+const toolbarVisible = ref(true)
 const favoriteBusy = ref(new Set<string>()), readBusy = new Set<string>()
 let recordsRequest = 0
+let lastScrollTop = 0
 const feedOptions = computed(() => [
   ...feeds.value.filter((feed): feed is Feed & {
     feedId: string | number
@@ -315,7 +319,29 @@ function validExternal(url?: string) {
 }
 
 function updateScrollTopVisibility() {
-  showScrollTop.value = $q.screen.lt.md && window.scrollY > 480
+  showScrollTop.value = window.scrollY > 480
+}
+
+function updateToolbarVisibility() {
+  const currentScrollTop = Math.max(window.scrollY, 0)
+  const scrollDelta = currentScrollTop - lastScrollTop
+
+  if (currentScrollTop < 80 || scrollDelta < -4) toolbarVisible.value = true
+  else if (scrollDelta > 4) toolbarVisible.value = false
+
+  lastScrollTop = currentScrollTop
+  updateScrollTopVisibility()
+}
+
+function showToolbar() {
+  toolbarVisible.value = true
+}
+
+function resetReaderScroll() {
+  lastScrollTop = 0
+  toolbarVisible.value = true
+  showScrollTop.value = false
+  window.scrollTo({top: 0, behavior: 'auto'})
 }
 
 function scrollToTop() {
@@ -405,6 +431,7 @@ function loadMore(_index: number, done: (stop?: boolean) => void) {
 
 function selectSource(feedId: number | string) {
   filters.feedId = feedId;
+  resetReaderScroll()
   void reload()
 }
 
@@ -550,14 +577,15 @@ async function downloadRecord() {
 
 onBeforeRouteLeave(() => !downloading.value)
 onMounted(() => {
-  window.addEventListener('scroll', updateScrollTopVisibility, {passive: true})
+  lastScrollTop = window.scrollY
+  window.addEventListener('scroll', updateToolbarVisibility, {passive: true})
   window.addEventListener('resize', updateScrollTopVisibility)
-  updateScrollTopVisibility()
+  updateToolbarVisibility()
   loadSources().then(() => reload());
   void loadTools();
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('scroll', updateScrollTopVisibility)
+  window.removeEventListener('scroll', updateToolbarVisibility)
   window.removeEventListener('resize', updateScrollTopVisibility)
   recordsRequest++
 })
@@ -623,12 +651,36 @@ onBeforeUnmount(() => {
 }
 
 .reader-scroll-top {
-  display: none;
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+  box-shadow: 0 4px 14px rgb(15 23 42 / 18%);
+}
+
+.reader-toolbar-reveal {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  z-index: 11;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 4px 14px rgb(15 23 42 / 12%);
 }
 
 .reader-toolbar {
+  position: sticky;
+  top: 64px;
+  z-index: 10;
   padding: 18px 20px 10px;
   margin-bottom: 20px;
+  transition: transform .2s ease, opacity .2s ease;
+}
+
+.reader-toolbar--hidden {
+  transform: translateY(calc(-100% - 12px));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .reader-search {
@@ -909,12 +961,13 @@ onBeforeUnmount(() => {
   }
 
   .reader-scroll-top {
-    display: inline-flex;
-    position: fixed;
     right: 16px;
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    z-index: 1000;
-    box-shadow: 0 4px 14px rgb(15 23 42 / 18%);
+  }
+
+  .reader-toolbar-reveal {
+    top: 58px;
+    right: 16px;
   }
 
   .reader-layout {
