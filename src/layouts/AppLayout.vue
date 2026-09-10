@@ -17,6 +17,16 @@
           <span class="app-brand">Coolkid RSS</span>
         </q-toolbar-title>
         <div class="text-caption text-grey-6 gt-sm">RSS 阅读与自动下载管理</div>
+        <q-btn
+          flat
+          round
+          dense
+          :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
+          :aria-label="$q.dark.isActive ? '切换到浅色模式' : '切换到暗色模式'"
+          @click="toggleTheme"
+        >
+          <q-tooltip>{{ $q.dark.isActive ? '浅色模式' : '暗色模式' }}</q-tooltip>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -71,15 +81,38 @@ function navigate (name: string) {
   const target = navigation.find((item) => item.name === name)
   if (target) router.push(target.to)
 }
+
+function applyThemeColor () {
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', $q.dark.isActive ? '#0f172a' : '#2563eb')
+}
+
+function toggleTheme () {
+  $q.dark.toggle()
+  localStorage.setItem('coolkid-rss-theme', $q.dark.isActive ? 'dark' : 'light')
+  applyThemeColor()
+}
+
+if (typeof window !== 'undefined') {
+  const savedTheme = localStorage.getItem('coolkid-rss-theme')
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    $q.dark.set(savedTheme === 'dark')
+  }
+  applyThemeColor()
+}
 </script>
 
 <style scoped>
-.app-layout { background: #f8fafc; }
+.app-layout { background: var(--app-page); color: var(--app-ink); }
+.app-layout :deep(.q-header), .app-layout :deep(.q-footer), .app-layout :deep(.q-drawer) { background: var(--app-panel) !important; color: var(--app-ink) !important; }
+.app-layout :deep(.q-header), .app-layout :deep(.q-footer), .app-layout :deep(.q-drawer) { border-color: var(--app-border) !important; }
+.app-layout :deep(.q-toolbar), .app-layout :deep(.q-item-label) { color: var(--app-ink); }
 .app-brand { font-size: 17px; letter-spacing: -.3px; }
 .desktop-navigation { padding: 16px 10px; }
 .desktop-navigation .q-item { border-radius: 10px; margin-bottom: 6px; min-height: 48px; padding: 12px; font-size: 13px; }
 .desktop-navigation :deep(.q-item__section--avatar) { min-width: 34px; }
-.nav-active { color: var(--q-primary); background: #eff6ff; font-weight: 600; }
+.nav-active { color: var(--q-primary); background: var(--app-surface-active); font-weight: 600; }
+.app-layout :deep(.text-grey-9) { color: var(--app-ink) !important; }
+.app-layout :deep(.text-grey-8), .app-layout :deep(.text-grey-7), .app-layout :deep(.text-grey-6) { color: var(--app-muted) !important; }
 
 @media (max-width: 1023px) {
   .mobile-bottom-nav {
@@ -95,6 +128,6 @@ function navigate (name: string) {
   .mobile-bottom-nav :deep(.q-tab__label) {
     font-size: 11px;
   }
-  .mobile-bottom-nav :deep(.q-tab--active .q-tab__icon) { background: #eff5ff; border-radius: 8px; width: 44px; }
+  .mobile-bottom-nav :deep(.q-tab--active .q-tab__icon) { background: var(--app-surface-active); border-radius: 8px; width: 44px; }
 }
 </style>

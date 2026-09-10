@@ -383,7 +383,7 @@ onMounted(load)
 }
 
 .preset-active {
-  background: #eff5ff;
+  background: var(--app-surface-active);
 }
 
 .feed-timing {
@@ -395,7 +395,7 @@ onMounted(load)
   padding: 12px 16px;
   font-size: 12px;
   color: var(--muted);
-  background: #f8fafc;
+  background: var(--app-surface-hover);
 }
 
 .sort-actions {
@@ -420,7 +420,7 @@ onMounted(load)
   width: 36px;
   height: 44px;
   background: transparent;
-  color: #64748b;
+  color: var(--app-muted);
   border: 0;
   border-radius: 8px;
   cursor: grab;
@@ -442,6 +442,6 @@ onMounted(load)
 
 .feed-dragging {
   opacity: .55;
-  background: #eff5ff;
+  background: var(--app-surface-active);
 }
 </style>

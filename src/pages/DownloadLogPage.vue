@@ -300,20 +300,20 @@ onBeforeUnmount(() => {
 
 .log-table :deep(th) {
   color: var(--muted);
-  background: #f8fafc;
+  background: var(--app-surface-hover);
   font-size: 11px;
   height: 44px;
 }
 
 .log-table :deep(td) {
   padding: 18px 16px;
-  color: #64748b;
+  color: var(--app-muted);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 
 .log-record-title {
-  color: #18243b;
+  color: var(--app-ink);
   font-weight: 550;
   font-size: 13px;
   line-height: 1.8;
@@ -381,8 +381,8 @@ onBeforeUnmount(() => {
   height: 56px;
   display: grid;
   place-items: center;
-  background: #eff5ff;
-  color: #4776c6;
+  background: var(--app-surface-active);
+  color: var(--app-icon);
   border-radius: 16px;
   margin-bottom: 18px;
 }

@@ -48,7 +48,22 @@
         <section class="workspace-panel reader-toolbar">
           <div class="reader-mobile-source">
             <q-select :model-value="filters.feedId" outlined dense emit-value map-options :options="feedOptions"
-                      label="订阅来源" :loading="sourcesLoading" @update:model-value="selectSource"/>
+                      label="订阅来源" :loading="sourcesLoading" @update:model-value="selectSource">
+              <template #selected-item="scope">
+                <span>{{ scope.opt.label }}</span>
+                <span v-if="scope.opt.unread > 0" class="source-count">{{
+                    scope.opt.unread > 999 ? '999+' : scope.opt.unread
+                  }}</span>
+              </template>
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>{{ scope.opt.label }}</q-item-section>
+                  <q-item-section v-if="scope.opt.unread > 0" side>
+                    <span class="source-count">{{ scope.opt.unread > 999 ? '999+' : scope.opt.unread }}</span>
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <div v-if="sourcesError" class="inline-failure reader-source-error">订阅来源加载失败
             <q-btn flat color="primary" label="重试" @click="loadSources"/>
@@ -95,7 +110,8 @@
             <q-btn v-if="feeds.length" flat color="primary" label="调整筛选" @click="openFilters"/>
             <q-btn v-else unelevated color="primary" icon="add" label="添加订阅" to="/feeds"/>
           </EmptyState>
-          <template v-else>
+          <q-infinite-scroll v-else :offset="320" :disable="page >= maxPage || moreError"
+                             @load="loadMore">
             <article v-for="record in records" :key="String(record.recordId)" class="reader-record"
                      :class="{ 'reader-record--unread': record.recordReadate == null }">
               <button type="button" class="record-open" :aria-label="'阅读：' + record.recordTitle"
@@ -110,30 +126,37 @@
                   }}</span>
               </button>
               <div class="record-bottom">
-                <span class="record-status"><template v-if="record.recordIsdl > 0"><q-icon name="check_circle"
-                                                                                           size="14px"/> 已下载</template><template
-                    v-else>{{ record.recordReadate == null ? '未读' : '已读' }}</template></span>
+                <span v-if="record.recordIsdl > 0" class="record-status"><q-icon name="check_circle"
+                                                                                     size="14px"/> 已下载</span>
                 <div class="record-actions">
                   <q-btn flat round :color="record.recordFav > 0 ? 'warning' : 'grey-6'"
                          :icon="record.recordFav > 0 ? 'star' : 'star_border'"
                          :aria-label="record.recordFav > 0 ? '取消星标' : '添加星标'"
                          :aria-pressed="record.recordFav > 0" :loading="favoriteBusy.has(String(record.recordId))"
                          @click="toggleFavorite(record)"/>
-                  <q-btn v-if="record.recordDlurl" flat round color="primary" icon="download" aria-label="下载此内容"
+                  <q-btn v-if="record.recordDlurl" flat round color="grey-6" icon="download" aria-label="下载此内容"
                          @click="openDownload(record)"/>
                   <q-btn v-if="validExternal(record.recordUrl)" flat round color="grey-6" icon="open_in_new"
                          aria-label="打开原文" @click="openExternal(record.recordUrl)"/>
                 </div>
               </div>
             </article>
-            <footer class="reader-more"><span>{{ records.length }} / {{ total }} 条内容</span>
-              <q-btn v-if="page < maxPage" outline color="primary" :label="moreError ? '重试加载' : '加载更多'"
-                     :loading="loadingMore" @click="loadMore"/>
-              <span v-else>已显示全部结果</span></footer>
-          </template>
+            <template #loading>
+              <div v-if="loadingMore" class="reader-more-loading" role="status">正在加载下一页…</div>
+            </template>
+          </q-infinite-scroll>
+          <footer v-if="records.length" class="reader-more">
+            <span>{{ records.length }} / {{ total }} 条内容</span>
+            <span v-if="moreError">下一页加载失败，请点击顶部刷新重试</span>
+            <span v-else-if="page >= maxPage">已显示全部结果</span>
+            <span v-else>继续滚动加载更多</span>
+          </footer>
         </section>
       </main>
     </div>
+
+    <q-btn v-if="showScrollTop" class="reader-scroll-top" round unelevated color="primary"
+           icon="keyboard_arrow_up" aria-label="回到顶部" @click="scrollToTop"/>
 
     <q-dialog v-model="filtersOpen" :position="$q.screen.lt.md ? 'bottom' : 'standard'">
       <q-card class="workspace-dialog reader-filter-dialog">
@@ -208,7 +231,7 @@
               <q-icon name="info_outline" size="18px"/>
               暂无已启用的下载工具，请先在下载工具页面添加并启用。
             </div>
-            <q-input v-model="downloadForm.downUrl" readonly outlined label="下载地址" type="textarea" autogrow
+            <q-input v-model="downloadForm.downUrl" readonly outlined label="下载地址" input-class="download-url-input"
                      hide-bottom-space/>
             <q-select v-model="downloadForm.dlId" outlined emit-value map-options :options="downloaderOptions"
                       label="下载工具 *" :loading="toolsLoading" :disable="downloading || toolsLoading"
@@ -258,6 +281,7 @@ const refreshing = ref(false), markingAll = ref(false), sourcesLoading = ref(fal
 const filtersOpen = ref(false), detailOpen = ref(false), downloadOpen = ref(false), downloading = ref(false)
 const activeRecord = ref<RssRecord | null>(null), dateError = ref('')
 const page = ref(1), maxPage = ref(1), total = ref(0)
+const showScrollTop = ref(false)
 const favoriteBusy = ref(new Set<string>()), readBusy = new Set<string>()
 let recordsRequest = 0
 const feedOptions = computed(() => [
@@ -288,6 +312,14 @@ const downloadForm = reactive({
 
 function validExternal(url?: string) {
   return !!url && httpUrl(url) === true
+}
+
+function updateScrollTopVisibility() {
+  showScrollTop.value = $q.screen.lt.md && window.scrollY > 480
+}
+
+function scrollToTop() {
+  window.scrollTo({top: 0, behavior: 'smooth'})
 }
 
 function excerpt(description: string) {
@@ -363,8 +395,12 @@ function reload() {
   return loadRecords(1)
 }
 
-function loadMore() {
-  if (!loading.value && !loadingMore.value && page.value < maxPage.value) void loadRecords(page.value + 1)
+function loadMore(_index: number, done: (stop?: boolean) => void) {
+  if (loading.value || loadingMore.value || page.value >= maxPage.value) {
+    done(true)
+    return
+  }
+  void loadRecords(page.value + 1).then(() => done(page.value >= maxPage.value || moreError.value))
 }
 
 function selectSource(feedId: number | string) {
@@ -514,10 +550,15 @@ async function downloadRecord() {
 
 onBeforeRouteLeave(() => !downloading.value)
 onMounted(() => {
+  window.addEventListener('scroll', updateScrollTopVisibility, {passive: true})
+  window.addEventListener('resize', updateScrollTopVisibility)
+  updateScrollTopVisibility()
   loadSources().then(() => reload());
   void loadTools();
 })
 onBeforeUnmount(() => {
+  window.removeEventListener('scroll', updateScrollTopVisibility)
+  window.removeEventListener('resize', updateScrollTopVisibility)
   recordsRequest++
 })
 </script>
@@ -555,17 +596,21 @@ onBeforeUnmount(() => {
 }
 
 .source-active {
-  background: #eff5ff;
+  background: var(--app-surface-active);
   color: var(--q-primary);
   font-weight: 600;
 }
 
 .source-count {
-  color: #64748b;
-  background: #f1f5f9;
+  color: var(--app-muted);
+  background: var(--app-surface);
   border-radius: 5px;
   padding: 2px 6px;
   font-size: 10px;
+}
+
+.reader-mobile-source .source-count {
+  margin-left: 6px;
 }
 
 .source-manage {
@@ -575,6 +620,10 @@ onBeforeUnmount(() => {
 
 .reader-main {
   min-width: 0;
+}
+
+.reader-scroll-top {
+  display: none;
 }
 
 .reader-toolbar {
@@ -625,7 +674,7 @@ onBeforeUnmount(() => {
 
 .reader-view-buttons .view-active {
   color: var(--q-primary);
-  background: #eff5ff;
+  background: var(--app-surface-active);
 }
 
 .reader-date {
@@ -651,12 +700,12 @@ onBeforeUnmount(() => {
 }
 
 .reader-record {
-  padding: 22px 24px 10px;
+  padding: 16px 24px 6px;
   border-bottom: 1px solid var(--border);
 }
 
 .reader-record:hover {
-  background: #fcfdff;
+  background: var(--app-panel-soft);
 }
 
 .record-open {
@@ -683,8 +732,8 @@ onBeforeUnmount(() => {
   gap: 8px 12px;
   font-size: 11px;
   color: var(--muted);
-  line-height: 1.7;
-  margin-bottom: 10px;
+  line-height: 1.5;
+  margin-bottom: 6px;
 }
 
 .unread-dot {
@@ -701,14 +750,14 @@ onBeforeUnmount(() => {
   overflow: hidden;
   font-size: 16px;
   font-weight: 500;
-  line-height: 1.75;
+  line-height: 1.55;
   overflow-wrap: anywhere;
-  color: #526079;
+  color: var(--app-text-secondary);
 }
 
 .reader-record--unread .record-title {
   font-weight: 650;
-  color: #18243b;
+  color: var(--app-ink);
 }
 
 .record-excerpt {
@@ -718,8 +767,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.8;
-  margin-top: 8px;
+  line-height: 1.6;
+  margin-top: 4px;
   overflow-wrap: anywhere;
 }
 
@@ -728,7 +777,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
 .record-status {
@@ -740,16 +789,22 @@ onBeforeUnmount(() => {
 }
 
 .record-status .q-icon {
-  color: #208349;
+  color: var(--app-success-text);
 }
 
 .record-actions {
   display: flex;
   gap: 2px;
+  margin-left: auto;
+}
+
+.record-actions :deep(.q-btn) {
+  min-width: 36px;
+  min-height: 36px;
 }
 
 .record-actions :deep(.q-icon) {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .reader-more {
@@ -761,6 +816,13 @@ onBeforeUnmount(() => {
   padding: 20px 24px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.reader-more-loading {
+  padding: 12px 24px 16px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
 }
 
 .reader-mobile-source, .reader-source-error {
@@ -789,7 +851,7 @@ onBeforeUnmount(() => {
 
 .article-meta {
   font-size: 12px;
-  color: #64748b;
+  color: var(--app-muted);
   line-height: 1.8;
 }
 
@@ -828,6 +890,12 @@ onBeforeUnmount(() => {
   line-height: 1.7;
 }
 
+.download-url-input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 1199px) and (min-width: 1024px) {
   .reader-layout {
     grid-template-columns: 210px minmax(0, 1fr);
@@ -836,6 +904,19 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1023px) {
+  .download-fields {
+    align-content: start;
+  }
+
+  .reader-scroll-top {
+    display: inline-flex;
+    position: fixed;
+    right: 16px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    z-index: 1000;
+    box-shadow: 0 4px 14px rgb(15 23 42 / 18%);
+  }
+
   .reader-layout {
     display: block;
   }
@@ -895,7 +976,7 @@ onBeforeUnmount(() => {
   }
 
   .reader-record {
-    padding: 18px 16px 8px;
+    padding: 16px 16px 6px;
   }
 
   .record-title {
@@ -905,6 +986,10 @@ onBeforeUnmount(() => {
   .reader-more {
     padding: 16px;
     font-size: 11px;
+  }
+
+  .reader-more-loading {
+    padding: 10px 16px 14px;
   }
 
   .reader-filter-dialog {

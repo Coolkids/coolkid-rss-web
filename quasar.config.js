@@ -34,7 +34,7 @@ module.exports = configure(function () {
         dark: false,
         brand: {
           primary: '#2563eb',
-          secondary: '#64748b',
+          secondary: '#526079',
           accent: '#0ea5e9',
           positive: '#16a34a',
           negative: '#dc2626',

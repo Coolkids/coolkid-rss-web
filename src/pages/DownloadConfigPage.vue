@@ -129,8 +129,8 @@ onMounted(load)
 .service-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .service-type { display: flex; align-items: center; gap: 12px; text-align: left; min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: white; padding: 16px; font: inherit; font-size: 13px; color: var(--muted); cursor: pointer; }
 .service-type > .q-icon { margin-left: auto; }
-.service-type--active { border-color: #7da5f4; background: #f5f8ff; color: var(--q-primary); }
-.service-symbol { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #eff5ff; color: #4776c6; font-size: 16px; font-weight: 600; flex-shrink: 0; }
+.service-type--active { border-color: var(--app-accent-border-strong); background: var(--app-surface-active); color: var(--q-primary); }
+.service-symbol { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--app-surface-active); color: var(--app-icon); font-size: 16px; font-weight: 600; flex-shrink: 0; }
 .service-type:focus-visible { outline: 2px solid var(--q-primary); }
 .service-type:disabled { opacity: .6; cursor: default; }
 @media (max-width: 1199px) { .service-type { flex-wrap: wrap; gap: 8px; padding: 12px; } .service-type > span:nth-child(2) { order: 3; width: 100%; } }
