@@ -255,9 +255,9 @@ onBeforeUnmount(() => {
 }
 
 .log-filter-form {
-  padding: 0 24px 20px;
+  padding: 0 20px 16px;
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .log-date-fields {
@@ -270,6 +270,16 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.log-filters .q-field--dense .q-field__control,
+.log-filters .q-field--dense .q-field__marginal {
+  min-height: 38px;
+  height: 38px;
+}
+
+.log-filters .q-btn {
+  min-height: 36px;
 }
 
 .log-filter-actions {
@@ -397,9 +407,64 @@ onBeforeUnmount(() => {
   grid-column: 1 / -1;
 }
 
+@media (min-width: 1024px) {
+  .log-filter-form {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: center;
+  }
+
+  .form-grid, .log-date-fields {
+    display: contents;
+  }
+
+  .form-grid > :first-child {
+    grid-column: span 2;
+  }
+
+  .form-grid > :nth-child(2) {
+    grid-column: span 2;
+  }
+
+  .log-filter-actions {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+}
+
+@media (min-width: 1280px) {
+  .log-filter-form {
+    grid-template-columns: minmax(190px, 1.45fr) minmax(150px, 1fr) repeat(2, minmax(135px, .85fr)) minmax(170px, 1.2fr) auto;
+  }
+
+  .form-grid > :first-child {
+    grid-column: auto;
+  }
+
+  .form-grid > :nth-child(2) {
+    grid-column: auto;
+  }
+
+  .log-filter-actions {
+    display: contents;
+  }
+
+  .date-presets {
+    grid-column: 5;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .filter-buttons {
+    grid-column: 6;
+    justify-content: flex-end;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 599px) {
   .log-filter-form {
-    padding: 0 16px 16px;
+    padding: 0 16px 14px;
+    gap: 10px;
   }
 
   .log-date-fields {

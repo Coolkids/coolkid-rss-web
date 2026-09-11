@@ -475,14 +475,14 @@ onBeforeUnmount(() => {
   --rule-ink: var(--app-ink);
   --rule-soft: var(--app-surface);
   color: var(--rule-ink);
-  padding: 16px 16px 20px;
+  padding: 10px 16px 20px;
 }
 .rule-page h1, .rule-page h2, .rule-page h3, .rule-page p { margin: 0; }
-.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
-.page-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--rule-muted); font-size: 11px; font-weight: 600; letter-spacing: 2px; margin-bottom: 8px; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.page-eyebrow { display: none; }
 .page-eyebrow > span { width: 6px; height: 6px; border-radius: 50%; background: var(--q-primary); }
-.page-heading h1 { font-size: 28px; font-weight: 750; line-height: 1.4; letter-spacing: -.6px; }
-.page-heading p { color: var(--rule-muted); font-size: 13px; margin-top: 6px; }
+.page-heading h1 { font-size: 24px; font-weight: 750; line-height: 1.3; letter-spacing: -.4px; }
+.page-heading p { color: var(--rule-muted); font-size: 12px; line-height: 1.5; margin-top: 3px; }
 .heading-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .rule-page :deep(.q-btn) { border-radius: 10px; min-height: 44px; }
 .rule-page :deep(.q-btn--round) { border-radius: 50%; min-width: 44px; }
@@ -624,11 +624,10 @@ onBeforeUnmount(() => {
   .editor-actions { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 599px) {
-  .rule-page { padding-top: 14px; padding-bottom: 12px; }
-  .page-heading { gap: 10px; margin-bottom: 24px; align-items: center; }
-  .page-heading h1 { font-size: 25px; }
-  .page-heading p { font-size: 11px; max-width: 180px; line-height: 1.7; }
-  .page-eyebrow { font-size: 9px; letter-spacing: 1px; }
+  .rule-page { padding-top: 8px; padding-bottom: 12px; }
+  .page-heading { gap: 10px; margin-bottom: 14px; align-items: center; }
+  .page-heading h1 { font-size: 22px; }
+  .page-heading p { font-size: 11px; max-width: 220px; line-height: 1.5; }
   .heading-actions { gap: 0; }
   .heading-actions > .q-btn:first-child { padding: 0 12px; font-size: 12px; }
   .heading-actions > .q-btn:first-child :deep(.q-icon) { margin-right: 3px; font-size: 19px; }

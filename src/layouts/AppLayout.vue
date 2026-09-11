@@ -41,7 +41,7 @@
     </q-drawer>
 
     <q-page-container>
-      <q-page class="app-page q-pa-sm q-pa-md-lg">
+      <q-page class="app-page q-pa-sm q-pa-md">
         <div class="page-container"><router-view /></div>
       </q-page>
     </q-page-container>

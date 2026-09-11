@@ -1,23 +1,6 @@
 <template>
   <section class="workspace-page reader-page">
-    <PageHeading title="Feed 浏览" subtitle="发现新内容，留住值得关注的每一条。" eyebrow="你的阅读空间">
-      <q-btn outline color="primary" icon="refresh" :round="$q.screen.lt.sm"
-             :label="$q.screen.lt.sm ? undefined : filters.feedId === 0 ? '刷新列表' : '更新订阅'"
-             :aria-label="filters.feedId === 0 ? '刷新列表' : '更新订阅'" :loading="refreshing" :disable="loading"
-             @click="refresh"/>
-      <q-btn flat round icon="more_horiz" aria-label="阅读操作">
-        <q-menu anchor="bottom right" self="top right">
-          <q-list>
-            <q-item v-close-popup clickable :disable="markingAll || loading || !records.length" @click="markAllRead">
-              <q-item-section avatar>
-                <q-icon name="done_all"/>
-              </q-item-section>
-              <q-item-section>全部标记已读</q-item-section>
-            </q-item>
-          </q-list>
-        </q-menu>
-      </q-btn>
-    </PageHeading>
+    <PageHeading title="Feed 浏览" subtitle="发现新内容，留住值得关注的每一条。" eyebrow="你的阅读空间"/>
     <div class="reader-layout">
       <aside class="workspace-panel reader-sources" aria-label="订阅来源">
         <div class="panel-heading"><h2>订阅来源 <span class="count-tag">{{ feeds.length }}</span></h2>
@@ -88,7 +71,21 @@
               <q-btn flat icon="star_border" label="星标" :class="{ 'view-active': filters.fav }"
                      :aria-pressed="filters.fav" @click="setView('fav')"/>
             </div>
-            <span class="reader-date">{{ dateRangeLabel }}</span>
+            <div class="reader-view-meta">
+              <span class="reader-date">{{ dateRangeLabel }}</span>
+              <div class="reader-view-actions" role="group" aria-label="阅读操作">
+                <q-btn class="reader-action-btn" flat round dense color="primary" icon="refresh"
+                       :aria-label="filters.feedId === 0 ? '刷新列表' : '更新订阅'" :loading="refreshing"
+                       :disable="loading" @click="refresh">
+                  <q-tooltip>{{ filters.feedId === 0 ? '刷新列表' : '更新订阅' }}</q-tooltip>
+                </q-btn>
+                <q-btn class="reader-action-btn" flat round dense color="grey-7" icon="done_all"
+                       aria-label="全部标记已读" :loading="markingAll"
+                       :disable="markingAll || loading || !records.length" @click="markAllRead">
+                  <q-tooltip>全部标记已读</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -147,7 +144,7 @@
           </q-infinite-scroll>
           <footer v-if="records.length" class="reader-more">
             <span>{{ records.length }} / {{ total }} 条内容</span>
-            <span v-if="moreError">下一页加载失败，请点击顶部刷新重试</span>
+            <span v-if="moreError">下一页加载失败，请点击上方刷新按钮重试</span>
             <span v-else-if="page >= maxPage">已显示全部结果</span>
             <span v-else>继续滚动加载更多</span>
           </footer>
@@ -155,10 +152,25 @@
       </main>
     </div>
 
+    <div v-if="!toolbarVisible" class="reader-toolbar-reveal-group" role="group" aria-label="阅读快捷操作">
+      <q-btn class="reader-action-btn" flat round dense icon="search" aria-label="显示搜索栏" @click="showToolbar">
+        <q-tooltip>显示搜索栏</q-tooltip>
+      </q-btn>
+      <q-btn class="reader-action-btn" flat round dense color="primary" icon="refresh"
+             :aria-label="filters.feedId === 0 ? '刷新列表' : '更新订阅'" :loading="refreshing" :disable="loading"
+             @click="refresh">
+        <q-tooltip>{{ filters.feedId === 0 ? '刷新列表' : '更新订阅' }}</q-tooltip>
+      </q-btn>
+      <q-btn class="reader-action-btn" flat round dense color="grey-7" icon="done_all"
+             aria-label="全部标记已读" :loading="markingAll"
+             :disable="markingAll || loading || !records.length" @click="markAllRead">
+        <q-tooltip>全部标记已读</q-tooltip>
+      </q-btn>
+    </div>
     <q-btn v-if="showScrollTop" class="reader-scroll-top" round unelevated color="primary"
-           icon="keyboard_arrow_up" aria-label="回到顶部" @click="scrollToTop"/>
-    <q-btn v-if="!toolbarVisible" class="reader-toolbar-reveal" flat round icon="search"
-           aria-label="显示搜索栏" @click="showToolbar"/>
+           icon="keyboard_arrow_up" aria-label="回到顶部" @click="scrollToTop">
+      <q-tooltip>回到顶部</q-tooltip>
+    </q-btn>
 
     <q-dialog v-model="filtersOpen" :position="$q.screen.lt.md ? 'bottom' : 'standard'">
       <q-card class="workspace-dialog reader-filter-dialog">
@@ -326,7 +338,7 @@ function updateToolbarVisibility() {
   const currentScrollTop = Math.max(window.scrollY, 0)
   const scrollDelta = currentScrollTop - lastScrollTop
 
-  if (currentScrollTop < 80 || scrollDelta < -4) toolbarVisible.value = true
+  if (currentScrollTop < 80) toolbarVisible.value = true
   else if (scrollDelta > 4) toolbarVisible.value = false
 
   lastScrollTop = currentScrollTop
@@ -650,22 +662,36 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.reader-action-btn {
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.reader-action-btn :deep(.q-icon) {
+  font-size: 18px;
+}
+
+.reader-toolbar-reveal-group {
+  position: fixed;
+  right: 24px;
+  top: 72px;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-panel);
+  box-shadow: 0 4px 14px rgb(15 23 42 / 12%);
+}
+
 .reader-scroll-top {
   position: fixed;
   right: 24px;
   bottom: 24px;
   z-index: 1000;
   box-shadow: 0 4px 14px rgb(15 23 42 / 18%);
-}
-
-.reader-toolbar-reveal {
-  position: fixed;
-  top: 72px;
-  right: 24px;
-  z-index: 11;
-  background: var(--app-panel);
-  border: 1px solid var(--app-border);
-  box-shadow: 0 4px 14px rgb(15 23 42 / 12%);
 }
 
 .reader-toolbar {
@@ -701,6 +727,19 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 12px;
+}
+
+.reader-view-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.reader-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .reader-view-buttons {
@@ -960,14 +999,34 @@ onBeforeUnmount(() => {
     align-content: start;
   }
 
+  .reader-detail > .dialog-actions {
+    flex-wrap: nowrap;
+    justify-content: stretch;
+    gap: 6px;
+  }
+
+  .reader-detail > .dialog-actions .q-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 40px;
+    padding-inline: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .reader-detail > .dialog-actions .q-btn :deep(.q-icon) {
+    font-size: 18px;
+    margin-right: 4px;
+  }
+
+  .reader-toolbar-reveal-group {
+    right: 16px;
+    top: 58px;
+  }
+
   .reader-scroll-top {
     right: 16px;
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .reader-toolbar-reveal {
-    top: 58px;
-    right: 16px;
   }
 
   .reader-layout {
@@ -1019,8 +1078,13 @@ onBeforeUnmount(() => {
     min-height: 44px;
   }
 
-  .reader-date {
+  .reader-view-meta {
     width: 100%;
+    margin-left: 0;
+  }
+
+  .reader-date {
+    flex: 1;
     padding: 8px 4px 0;
   }
 
@@ -1048,6 +1112,11 @@ onBeforeUnmount(() => {
   .reader-filter-dialog {
     border-radius: 16px 16px 0 0 !important;
     max-width: 100vw;
+  }
+
+  .reader-detail > .dialog-actions {
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
 
   .reader-article {
