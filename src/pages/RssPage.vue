@@ -306,7 +306,7 @@ const feedOptions = computed(() => [
   } => feed.feedId != null).map(feed => ({
     label: feed.feedName || '未命名订阅',
     value: feed.feedId,
-    unread: Number(feed.unRead || 0)
+    unread: unreadCount(feed)
   }))
 ])
 const selectedFeed = computed(() => feeds.value.find(feed => String(feed.feedId) === String(filters.feedId)))
@@ -362,6 +362,39 @@ function scrollToTop() {
 
 function excerpt(description: string) {
   return (DOMPurify.sanitize(description, {RETURN_DOM_FRAGMENT: true}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 180)
+}
+
+function unreadCount(feed: Feed) {
+  const count = Number(feed.unRead)
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
+}
+
+function recordFeed(record: RssRecord) {
+  if (record.feedId != null) {
+    const feed = feeds.value.find(item => String(item.feedId) === String(record.feedId))
+    if (feed) return feed
+  }
+  if (record.feedName) {
+    const feed = feeds.value.find(item => item.feedName === record.feedName)
+    if (feed) return feed
+  }
+  return selectedFeed.value
+}
+
+function decreaseUnread(record: RssRecord) {
+  const feed = recordFeed(record)
+  if (feed) feed.unRead = Math.max(0, unreadCount(feed) - 1)
+}
+
+function clearUnread() {
+  if (filters.feedId == 0) {
+    feeds.value.forEach(feed => {
+      feed.unRead = 0
+    })
+    return
+  }
+  const feed = selectedFeed.value
+  if (feed) feed.unRead = 0
 }
 
 async function loadSources() {
@@ -505,8 +538,8 @@ async function openRecord(record: RssRecord) {
   try {
     await api.readRecord({recordId: record.recordId});
     record.recordReadate = new Date().toISOString()
+    decreaseUnread(record)
     if (filters.unread) removeVisible(record)
-    void loadSources()
   } catch {
     notify('已读状态更新失败，关闭后可重新打开重试', 'negative')
   } finally {
@@ -535,6 +568,7 @@ async function markAllRead() {
   markingAll.value = true
   try {
     await api.allRead({feedId: filters.feedId});
+    clearUnread()
     await Promise.all([reload(), loadSources()]);
     notify('已全部标记为已读')
   } catch {

@@ -23,6 +23,7 @@ export interface FeedSortItem {
 
 export interface RssRecord {
   recordId: number | string
+  feedId?: number | string
   recordTitle: string
   recordDescription?: string
   recordPubdate?: string
