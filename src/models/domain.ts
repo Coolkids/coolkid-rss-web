@@ -4,10 +4,25 @@ export interface ApiResponse<T> {
   code?: number | string
 }
 
+export type FeedType = 'MOVIE' | 'NEWS' | 'CODE' | 'MUSIC' | 'OTHER'
+
+export const FEED_TYPE_OPTIONS: Array<{ label: string; value: FeedType }> = [
+  {label: '影视', value: 'MOVIE'},
+  {label: '新闻', value: 'NEWS'},
+  {label: '代码', value: 'CODE'},
+  {label: '音乐', value: 'MUSIC'},
+  {label: '其他', value: 'OTHER'}
+]
+
+export function feedTypeLabel(type?: FeedType | string) {
+  return FEED_TYPE_OPTIONS.find(option => option.value === type)?.label || '其他'
+}
+
 export interface Feed {
   feedId?: number | string
   feedName: string
   feedUrl: string
+  feedType?: FeedType
   feedLastUpdate?: string
   feedNextUpdate?: string
   feedCrontab: number
@@ -34,6 +49,18 @@ export interface RssRecord {
   recordFav: number
   recordIsdl: number
   feedName?: string
+  recordMediaInfo?: Record<string, unknown>
+  recordPatch?: string
+  recordPatchUrl?: string
+  recordPatchSize?: number
+  recordPatchTruncated?: boolean
+}
+
+export interface RssPatch {
+  patch?: string
+  patchUrl?: string
+  size?: number
+  truncated?: boolean
 }
 
 export interface Downloader {

@@ -94,7 +94,7 @@
             <div><h2>{{ selectedFeedName }}</h2>
               <p v-if="selectedFeed?.feedLastUpdate">更新于 {{ selectedFeed.feedLastUpdate }}</p>
               <p v-else>按当前条件浏览订阅内容</p></div>
-            <span class="count-tag">{{ total }} 条内容</span></div>
+            <span class="reader-heading-meta"><span v-if="selectedFeed" class="feed-type-label">{{ feedTypeLabel(selectedFeed.feedType) }}</span><span class="count-tag">{{ total }} 条内容</span></span></div>
           <div v-if="loading" class="q-pa-lg" role="status" aria-label="正在加载内容">
             <q-skeleton v-for="i in 4" :key="i" height="100px" class="q-mb-md"/>
           </div>
@@ -214,8 +214,20 @@
             {{ activeRecord?.recordPubdate || '发布时间未知' }}
           </div>
           <h1>{{ activeRecord?.recordTitle }}</h1>
+          <div v-if="mediaInfoEntries.length" class="media-info" aria-label="媒体信息">
+            <q-chip v-for="item in mediaInfoEntries" :key="item.key" dense outline color="primary">
+              {{ item.label }}：{{ item.value }}
+            </q-chip>
+          </div>
           <div v-if="safeDescription" class="rss-content" v-html="safeDescription"/>
-          <EmptyState v-else icon="article" title="这条内容没有摘要" description="可以打开原文，查看完整内容。"/>
+          <div v-if="patchLoading" class="patch-loading" role="status">正在加载代码变更…</div>
+          <div v-else-if="patchError" class="patch-error">代码变更加载失败，可打开原文查看。</div>
+          <section v-if="activeRecord?.recordPatch" class="code-patch" aria-label="代码变更预览">
+            <div class="code-patch-heading"><strong>代码变更预览</strong><span>{{ formatPatchSize(activeRecord.recordPatchSize) }}<template v-if="activeRecord.recordPatchTruncated"> · 已截断</template></span></div>
+            <pre class="code-patch-content">{{ patchPreview }}</pre>
+            <div v-if="patchWasLimited" class="patch-note">仅显示前 {{ PATCH_PREVIEW_LIMIT.toLocaleString() }} 个字符，避免大 patch 阻塞页面。</div>
+          </section>
+          <EmptyState v-if="!safeDescription && !activeRecord?.recordPatch && !patchLoading" icon="article" title="这条内容没有摘要" description="可以打开原文，查看完整内容。"/>
         </div>
         <footer class="dialog-actions">
           <q-btn v-if="activeRecord" flat :color="activeRecord.recordFav > 0 ? 'warning' : 'grey-7'"
@@ -224,6 +236,8 @@
                  :loading="favoriteBusy.has(String(activeRecord.recordId))" @click="toggleFavorite(activeRecord)"/>
           <q-btn v-if="validExternal(activeRecord?.recordUrl)" outline color="primary" icon="open_in_new"
                  label="打开原文" @click="openExternal(activeRecord?.recordUrl)"/>
+          <q-btn v-if="validExternal(activeRecord?.recordPatchUrl)" outline color="grey-7" icon="code"
+                 label="打开 patch" @click="openExternal(activeRecord?.recordPatchUrl)"/>
           <q-btn v-if="activeRecord?.recordDlurl" unelevated color="primary" icon="download" label="下载"
                  @click="openDownload(activeRecord)"/>
         </footer>
@@ -272,7 +286,7 @@ import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
 import {onBeforeRouteLeave} from 'vue-router'
 import {useQuasar} from 'quasar'
 import api from '@/services/api'
-import type {Downloader, Feed, RssRecord} from '@/models/domain'
+import {feedTypeLabel, type Downloader, type Feed, type RssRecord} from '@/models/domain'
 import PageHeading from '@/components/PageHeading.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import {confirmAction, httpUrl, localDate, notify, openExternal} from '@/utils/ui'
@@ -294,12 +308,15 @@ const refreshing = ref(false), markingAll = ref(false), sourcesLoading = ref(fal
     toolsLoading = ref(false), toolsError = ref(false)
 const filtersOpen = ref(false), detailOpen = ref(false), downloadOpen = ref(false), downloading = ref(false)
 const activeRecord = ref<RssRecord | null>(null), dateError = ref('')
+const patchLoading = ref(false), patchError = ref(false)
 const page = ref(1), maxPage = ref(1), total = ref(0)
 const showScrollTop = ref(false)
 const toolbarVisible = ref(true)
 const favoriteBusy = ref(new Set<string>()), readBusy = new Set<string>()
 let recordsRequest = 0
+let patchRequest = 0
 let lastScrollTop = 0
+const PATCH_PREVIEW_LIMIT = 120_000
 const feedOptions = computed(() => [
   ...feeds.value.filter((feed): feed is Feed & {
     feedId: string | number
@@ -313,6 +330,11 @@ const selectedFeed = computed(() => feeds.value.find(feed => String(feed.feedId)
 const selectedFeedName = computed(() => selectedFeed.value?.feedName || '全部订阅')
 const dateRangeLabel = computed(() => (filters.startDate || '不限') + ' — ' + (filters.endDate || '不限'))
 const safeDescription = computed(() => DOMPurify.sanitize(activeRecord.value?.recordDescription || ''))
+const patchPreview = computed(() => (activeRecord.value?.recordPatch || '').slice(0, PATCH_PREVIEW_LIMIT))
+const patchWasLimited = computed(() => (activeRecord.value?.recordPatch || '').length > PATCH_PREVIEW_LIMIT)
+const mediaInfoEntries = computed(() => Object.entries(activeRecord.value?.recordMediaInfo || {})
+  .filter(([, value]) => value != null && String(value).trim() !== '')
+  .map(([key, value]) => ({key, label: mediaInfoLabel(key), value: formatMediaValue(value)})))
 const downloaderOptions = computed(() => downloaders.value.filter(item => item.status === 1).map(item => ({
   label: item.dlName,
   value: item.dlId
@@ -362,6 +384,26 @@ function scrollToTop() {
 
 function excerpt(description: string) {
   return (DOMPurify.sanitize(description, {RETURN_DOM_FRAGMENT: true}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 180)
+}
+
+function formatPatchSize(size?: number) {
+  if (!size || size < 1024) return `${size || 0} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KiB`
+  return `${(size / 1024 / 1024).toFixed(1)} MiB`
+}
+
+function mediaInfoLabel(key: string) {
+  const labels: Record<string, string> = {
+    anime_title: '媒体名称', anime_year: '年份', anime_season: '季度', anime_type: '类型',
+    episode_number: '集数', episode_title: '集标题', release_group: '发布组', source: '来源',
+    video_resolution: '分辨率', video_term: '视频', audio_term: '音频', subtitles: '字幕',
+    file_extension: '扩展名', release_information: '发布信息'
+  }
+  return labels[key] || key.replaceAll('_', ' ')
+}
+
+function formatMediaValue(value: unknown) {
+  return Array.isArray(value) ? value.join(', ') : String(value)
 }
 
 function unreadCount(feed: Feed) {
@@ -529,9 +571,33 @@ function removeVisible(record: RssRecord) {
   if (page.value < maxPage.value) void reload()
 }
 
+async function loadPatch(record: RssRecord) {
+  const feed = recordFeed(record)
+  if (feed?.feedType !== 'CODE' || record.recordPatch || !record.recordPatchUrl) return
+  const request = ++patchRequest
+  patchLoading.value = true
+  patchError.value = false
+  try {
+    const response = await api.getRecordPatch({recordId: record.recordId})
+    if (request !== patchRequest || activeRecord.value !== record) return
+    Object.assign(record, {
+      recordPatch: response.data?.patch,
+      recordPatchUrl: response.data?.patchUrl || record.recordPatchUrl,
+      recordPatchSize: response.data?.size || record.recordPatchSize,
+      recordPatchTruncated: response.data?.truncated || false
+    })
+  } catch {
+    if (request === patchRequest && activeRecord.value === record) patchError.value = true
+  } finally {
+    if (request === patchRequest) patchLoading.value = false
+  }
+}
+
 async function openRecord(record: RssRecord) {
   activeRecord.value = record;
+  patchError.value = false
   detailOpen.value = true
+  void loadPatch(record)
   const id = String(record.recordId)
   if (record.recordReadate != null || readBusy.has(id)) return
   readBusy.add(id)
@@ -634,6 +700,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', updateToolbarVisibility)
   window.removeEventListener('resize', updateScrollTopVisibility)
   recordsRequest++
+  patchRequest++
 })
 </script>
 
@@ -820,6 +887,13 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
+.reader-heading-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .reader-content {
   overflow: hidden;
 }
@@ -987,6 +1061,13 @@ onBeforeUnmount(() => {
   font-weight: 650;
 }
 
+.media-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: -12px 0 22px;
+}
+
 .rss-content {
   font-size: 15px;
   line-height: 1.9;
@@ -1007,6 +1088,52 @@ onBeforeUnmount(() => {
 .rss-content :deep(a) {
   color: var(--q-primary);
   overflow-wrap: anywhere;
+}
+
+.code-patch {
+  margin-top: 24px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--app-surface-soft);
+}
+
+.code-patch-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  color: var(--app-muted);
+  font-size: 11px;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.code-patch-heading strong {
+  color: var(--app-text-secondary);
+}
+
+.code-patch-content {
+  max-height: 58vh;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: 600px;
+  color: var(--app-text-secondary);
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.patch-loading, .patch-error, .patch-note {
+  margin-top: 16px;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.patch-error {
+  color: var(--q-negative);
 }
 
 .download-record-title {

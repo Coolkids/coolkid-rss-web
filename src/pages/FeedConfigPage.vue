@@ -50,9 +50,10 @@
                   feed.status === 1 ? '启用' : '停用'
                 }}</span></div>
               <div class="item-caption ellipsis">{{ feed.feedUrl }}</div>
-              <div v-if="!sorting" class="item-caption">
+              <div v-if="!sorting" class="item-caption feed-meta">
                 <q-icon name="schedule" size="13px"/>
-                每 {{ feed.feedCrontab }} 分钟更新
+                <span>每 {{ feed.feedCrontab }} 分钟更新</span>
+                <span class="feed-type-label">{{ feedTypeLabel(feed.feedType) }}</span>
               </div>
             </q-item-section>
             <q-item-section v-if="sorting" side>
@@ -116,6 +117,19 @@
             </section>
             <section class="form-block">
               <div class="form-block__heading">
+                <q-icon name="category" size="20px"/>
+                <div><h3>内容类型</h3>
+                  <p>选择类型后，更新订阅时会执行对应的内容增强处理。</p></div>
+              </div>
+              <q-select v-model="form.feedType" outlined emit-value map-options label="订阅类型"
+                        :options="feedTypeOptions" :disable="busy || sorting" hide-bottom-space/>
+              <div class="field-note">
+                <q-icon name="info_outline" size="17px"/>
+                影视会提取媒体元数据，代码订阅会抓取 GitHub 提交 patch 并按需预览。
+              </div>
+            </section>
+            <section class="form-block">
+              <div class="form-block__heading">
                 <q-icon name="schedule" size="20px"/>
                 <div><h3>更新计划</h3>
                   <p>按设定的周期获取新内容。</p></div>
@@ -160,7 +174,7 @@
 import {computed, nextTick, onMounted, ref} from 'vue'
 import {QForm, useQuasar} from 'quasar'
 import api from '@/services/api'
-import type {Feed} from '@/models/domain'
+import {FEED_TYPE_OPTIONS, feedTypeLabel, type Feed, type FeedType} from '@/models/domain'
 import PageHeading from '@/components/PageHeading.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import {useEditorDraft} from '@/composables/useEditorDraft'
@@ -175,7 +189,8 @@ const sortOriginal = ref<Feed[]>([])
 const draggingFeedId = ref<number | string | null>(null)
 const busy = computed(() => saving.value || deleting.value || sortSaving.value)
 const sortDirty = computed(() => sorting.value && feeds.value.map(f => f.feedId).join(',') !== sortOriginal.value.map(f => f.feedId).join(','))
-const empty = (): Feed => ({feedName: '', feedUrl: '', feedCrontab: 30, status: 1})
+const feedTypeOptions = FEED_TYPE_OPTIONS
+const empty = (): Feed => ({feedName: '', feedUrl: '', feedType: 'OTHER' as FeedType, feedCrontab: 30, status: 1})
 const {form, saved, dirty, reset, canDiscard} = useEditorDraft(empty, busy, sortDirty)
 const editorForm = ref<QForm>()
 const enabled = computed({
@@ -200,7 +215,7 @@ async function backToList() {
 }
 
 function setForm(feed: Feed = empty()) {
-  reset(feed);
+  reset({...feed, feedType: feed.feedType || 'OTHER'});
   nextTick(() => editorForm.value?.resetValidation())
 }
 
@@ -367,6 +382,26 @@ onMounted(load)
   font-size: 11px;
   border-top: 1px solid var(--border);
   padding: 16px;
+}
+
+.feed-type-label {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--q-primary);
+  background: var(--app-surface-active);
+  font-size: 10px;
+}
+
+.feed-meta {
+  display: flex;
+  align-items: center;
+}
+
+.feed-meta .feed-type-label {
+  margin-left: auto;
 }
 
 .interval-presets {
