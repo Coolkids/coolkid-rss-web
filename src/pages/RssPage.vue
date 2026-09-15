@@ -213,20 +213,78 @@
           <div class="article-meta">{{ activeRecord?.feedName || selectedFeedName }} ·
             {{ activeRecord?.recordPubdate || '发布时间未知' }}
           </div>
-          <h1>{{ activeRecord?.recordTitle }}</h1>
-          <div v-if="mediaInfoEntries.length" class="media-info" aria-label="媒体信息">
-            <q-chip v-for="item in mediaInfoEntries" :key="item.key" dense outline color="primary">
-              {{ item.label }}：{{ item.value }}
-            </q-chip>
+          <div class="article-title-row">
+            <h1>{{ activeRecord?.recordTitle }}</h1>
+            <button v-if="tmdbMediaInfo?.posterUrl" type="button" class="tmdb-title-poster"
+                    aria-label="查看 TMDB 海报和剧集照片" @click="openTmdbGallery()">
+              <img :src="tmdbMediaInfo.posterUrl" :alt="`${tmdbMediaInfo.name || 'TMDB'} 海报`"
+                   loading="lazy" decoding="async"/>
+              <q-tooltip>查看海报和剧集照片</q-tooltip>
+            </button>
           </div>
+          <div v-if="tmdbGalleryImages.length" ref="tmdbGalleryRef" class="tmdb-gallery" aria-hidden="true">
+            <img v-for="image in tmdbGalleryImages" :key="image" :src="image"
+                 :data-original="originalImageUrl(image)"
+                 :alt="`${tmdbMediaInfo?.name || 'TMDB'} 图片`"/>
+          </div>
+          <q-expansion-item v-if="mediaInfoVisible" class="media-info" icon="perm_media"
+                            label="媒体信息" :caption="mediaInfoCaption"
+                            expand-separator header-class="media-info-header" aria-label="媒体信息">
+            <div v-if="isMovieRecord && !tmdbMediaInfo" class="tmdb-refresh-row">
+              <span class="tmdb-refresh-name">媒体名称：{{ tmdbLookupName || '未提取到名称' }}</span>
+              <q-btn flat dense color="primary" icon="refresh" label="重新获取 TMDB"
+                     :disable="!tmdbLookupName" @click="openTmdbRefreshDialog"/>
+            </div>
+            <div v-if="tmdbMediaInfo" class="tmdb-media-info">
+              <div class="tmdb-media-body">
+                <div class="tmdb-media-heading">
+                  <a v-if="tmdbPageUrl" class="tmdb-title-link" :href="tmdbPageUrl" target="_blank"
+                     rel="noopener noreferrer">
+                    {{ tmdbMediaInfo.name || '未知名称' }}
+                    <q-icon name="open_in_new" size="15px" aria-hidden="true"/>
+                  </a>
+                  <strong v-else>{{ tmdbMediaInfo.name || '未知名称' }}</strong>
+                  <q-badge v-if="tmdbMediaInfo.mediaType" outline color="primary">
+                    {{ tmdbMediaInfo.mediaType === 'tv' ? '剧集' : '电影' }}
+                  </q-badge>
+                  <q-btn flat dense round color="primary" icon="edit" aria-label="修改 TMDB 数据"
+                         @click.stop="openTmdbRefreshDialog">
+                    <q-tooltip>修改 TMDB 数据</q-tooltip>
+                  </q-btn>
+                </div>
+                <div class="tmdb-media-meta">
+                  <span v-if="tmdbMediaInfo.releaseYear">{{ tmdbMediaInfo.releaseYear }}</span>
+                  <span v-if="tmdbMediaInfo.originalName && tmdbMediaInfo.originalName !== tmdbMediaInfo.name">
+                    {{ tmdbMediaInfo.originalName }}
+                  </span>
+                  <span v-if="tmdbMediaInfo.voteAverage != null">评分 {{ tmdbMediaInfo.voteAverage.toFixed(1) }}</span>
+                </div>
+                <p v-if="tmdbMediaInfo.overview" class="tmdb-overview">{{ tmdbMediaInfo.overview }}</p>
+                <div v-if="tmdbMediaInfo.genres?.length" class="tmdb-genres">
+                  <q-chip v-for="genre in tmdbMediaInfo.genres" :key="genre" dense outline color="primary">
+                    {{ genre }}
+                  </q-chip>
+                </div>
+              </div>
+            </div>
+            <div v-if="mediaInfoEntries.length" class="media-info-grid">
+              <div v-for="item in mediaInfoEntries" :key="item.key" class="media-info-item">
+                <span class="media-info-label">{{ item.label }}</span>
+                <span class="media-info-value">{{ item.value }}</span>
+              </div>
+            </div>
+          </q-expansion-item>
           <div v-if="safeDescription" class="rss-content" v-html="safeDescription"/>
-          <div v-if="patchLoading" class="patch-loading" role="status">正在加载代码变更…</div>
-          <div v-else-if="patchError" class="patch-error">代码变更加载失败，可打开原文查看。</div>
-          <section v-if="activeRecord?.recordPatch" class="code-patch" aria-label="代码变更预览">
-            <div class="code-patch-heading"><strong>代码变更预览</strong><span>{{ formatPatchSize(activeRecord.recordPatchSize) }}<template v-if="activeRecord.recordPatchTruncated"> · 已截断</template></span></div>
-            <pre class="code-patch-content">{{ patchPreview }}</pre>
-            <div v-if="patchWasLimited" class="patch-note">仅显示前 {{ PATCH_PREVIEW_LIMIT.toLocaleString() }} 个字符，避免大 patch 阻塞页面。</div>
-          </section>
+          <q-expansion-item v-if="activeRecord?.recordPatch || patchLoading || patchError" class="code-patch"
+                            icon="code" label="代码变更预览" :caption="patchCaption"
+                            expand-separator header-class="code-patch-header" aria-label="代码变更预览">
+            <div v-if="patchLoading" class="patch-loading" role="status">正在加载代码变更…</div>
+            <div v-else-if="patchError" class="patch-error">代码变更加载失败，可打开原文查看。</div>
+            <template v-else>
+              <pre class="code-patch-content hljs" v-html="highlightedPatch"/>
+              <div v-if="patchWasLimited" class="patch-note">仅显示前 {{ PATCH_PREVIEW_LIMIT.toLocaleString() }} 个字符，避免大 patch 阻塞页面。</div>
+            </template>
+          </q-expansion-item>
           <EmptyState v-if="!safeDescription && !activeRecord?.recordPatch && !patchLoading" icon="article" title="这条内容没有摘要" description="可以打开原文，查看完整内容。"/>
         </div>
         <footer class="dialog-actions">
@@ -241,6 +299,31 @@
           <q-btn v-if="activeRecord?.recordDlurl" unelevated color="primary" icon="download" label="下载"
                  @click="openDownload(activeRecord)"/>
         </footer>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="tmdbRefreshOpen" :persistent="tmdbRefreshing" :maximized="$q.screen.lt.md">
+      <q-card class="workspace-dialog tmdb-refresh-dialog">
+        <header class="dialog-heading">
+          <h2>{{ tmdbMediaInfo ? '修改 TMDB 数据' : '重新获取 TMDB 数据' }}</h2>
+          <q-btn v-close-popup flat round icon="close" aria-label="关闭 TMDB 查询" :disable="tmdbRefreshing"/>
+        </header>
+        <q-form greedy @submit="submitTmdbRefresh">
+          <div class="dialog-body tmdb-refresh-body">
+            <div class="field-note">
+              输入影视名称后查询 TMDB；默认使用当前提取到的媒体名称，也可以手动修改。
+            </div>
+            <q-input v-model="tmdbRefreshName" outlined autofocus label="影视名称 *"
+                     :disable="tmdbRefreshing"
+                     :rules="[value => !!value?.trim() || '请输入影视名称']" lazy-rules/>
+            <div v-if="tmdbRefreshError" class="inline-failure" role="alert">{{ tmdbRefreshError }}</div>
+          </div>
+          <footer class="dialog-actions">
+            <q-btn v-close-popup flat label="取消" :disable="tmdbRefreshing"/>
+            <q-btn type="submit" unelevated color="primary" icon="search" label="查询并保存"
+                   :loading="tmdbRefreshing"/>
+          </footer>
+        </q-form>
       </q-card>
     </q-dialog>
 
@@ -282,16 +365,20 @@
 
 <script setup lang="ts">
 import DOMPurify from 'dompurify'
-import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
+import hljs from 'highlight.js/lib/core'
+import diff from 'highlight.js/lib/languages/diff'
+import Viewer from 'viewerjs'
+import {computed, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
 import {onBeforeRouteLeave} from 'vue-router'
 import {useQuasar} from 'quasar'
 import api from '@/services/api'
-import {feedTypeLabel, type Downloader, type Feed, type RssRecord} from '@/models/domain'
+import {feedTypeLabel, type Downloader, type Feed, type RssRecord, type TmdbMediaInfo} from '@/models/domain'
 import PageHeading from '@/components/PageHeading.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import {confirmAction, httpUrl, localDate, notify, openExternal} from '@/utils/ui'
 
 const $q = useQuasar()
+hljs.registerLanguage('diff', diff)
 const defaultFilters = () => ({
   feedId: 0 as number | string,
   keywords: '' as string | null,
@@ -309,6 +396,8 @@ const refreshing = ref(false), markingAll = ref(false), sourcesLoading = ref(fal
 const filtersOpen = ref(false), detailOpen = ref(false), downloadOpen = ref(false), downloading = ref(false)
 const activeRecord = ref<RssRecord | null>(null), dateError = ref('')
 const patchLoading = ref(false), patchError = ref(false)
+const tmdbRefreshOpen = ref(false), tmdbRefreshing = ref(false), tmdbRefreshError = ref('')
+const tmdbRefreshName = ref('')
 const page = ref(1), maxPage = ref(1), total = ref(0)
 const showScrollTop = ref(false)
 const toolbarVisible = ref(true)
@@ -316,7 +405,13 @@ const favoriteBusy = ref(new Set<string>()), readBusy = new Set<string>()
 let recordsRequest = 0
 let patchRequest = 0
 let lastScrollTop = 0
+let tmdbViewer: Viewer | null = null
 const PATCH_PREVIEW_LIMIT = 120_000
+const MEDIA_INFO_ORDER = [
+  'anime_title', 'episode_title', 'episode_number', 'anime_year', 'anime_season', 'anime_type',
+  'release_group', 'source', 'video_resolution', 'video_term', 'audio_term', 'subtitles',
+  'file_name', 'file_extension', 'release_information'
+]
 const feedOptions = computed(() => [
   ...feeds.value.filter((feed): feed is Feed & {
     feedId: string | number
@@ -331,10 +426,73 @@ const selectedFeedName = computed(() => selectedFeed.value?.feedName || '全部�
 const dateRangeLabel = computed(() => (filters.startDate || '不限') + ' — ' + (filters.endDate || '不限'))
 const safeDescription = computed(() => DOMPurify.sanitize(activeRecord.value?.recordDescription || ''))
 const patchPreview = computed(() => (activeRecord.value?.recordPatch || '').slice(0, PATCH_PREVIEW_LIMIT))
+const highlightedPatch = computed(() => hljs.highlight(patchPreview.value, {
+  language: 'diff',
+  ignoreIllegals: true
+}).value)
 const patchWasLimited = computed(() => (activeRecord.value?.recordPatch || '').length > PATCH_PREVIEW_LIMIT)
+const patchCaption = computed(() => {
+  if (patchLoading.value) return '正在加载…'
+  if (patchError.value) return '加载失败，可打开原文查看'
+  const size = formatPatchSize(activeRecord.value?.recordPatchSize)
+  return `${size}${activeRecord.value?.recordPatchTruncated ? ' · 已截断' : ''}`
+})
+const tmdbMediaInfo = computed<TmdbMediaInfo | null>(() => {
+  const value = activeRecord.value?.recordMediaInfo?.tmdb
+  return isObject(value) ? value as TmdbMediaInfo : null
+})
+const isMovieRecord = computed(() => recordFeed(activeRecord.value)?.feedType === 'MOVIE')
+const tmdbLookupName = computed(() => tmdbMediaInfo.value?.name
+  || textValue(activeRecord.value?.recordMediaInfo?.anime_title)
+  || activeRecord.value?.recordTitle
+  || '')
+const tmdbPageUrl = computed(() => {
+  const info = tmdbMediaInfo.value
+  if (!info) return ''
+  if (info.tmdbUrl && validExternal(info.tmdbUrl)) return info.tmdbUrl
+  if (info.id == null) return ''
+  const mediaType = info.mediaType === 'tv' ? 'tv' : 'movie'
+  return `https://www.themoviedb.org/${mediaType}/${encodeURIComponent(String(info.id))}`
+})
+const tmdbGalleryImages = computed(() => {
+  const info = tmdbMediaInfo.value
+  if (!info) return []
+  const imageCollection = info.images
+  const collectionImages = Array.isArray(imageCollection)
+    ? imageCollection
+    : [
+        ...(imageCollection?.posters || []),
+        ...(imageCollection?.backdrops || []),
+        ...(imageCollection?.stills || [])
+      ]
+  const candidates = [
+    info.posterUrl,
+    info.backdropUrl,
+    ...(info.backdropUrls || []),
+    ...(info.photos || []),
+    ...(info.episodePhotos || []),
+    ...collectionImages
+  ]
+  return [...new Set(candidates.filter((url): url is string => !!url && httpUrl(url) === true))]
+})
 const mediaInfoEntries = computed(() => Object.entries(activeRecord.value?.recordMediaInfo || {})
-  .filter(([, value]) => value != null && String(value).trim() !== '')
-  .map(([key, value]) => ({key, label: mediaInfoLabel(key), value: formatMediaValue(value)})))
+  .filter(([key, value]) => key !== 'tmdb' && value != null && String(value).trim() !== '')
+  .map(([key, value], index) => ({key, label: mediaInfoLabel(key), value: formatMediaValue(value), index}))
+  .sort((left, right) => {
+    const leftPriority = MEDIA_INFO_ORDER.indexOf(left.key)
+    const rightPriority = MEDIA_INFO_ORDER.indexOf(right.key)
+    const leftOrder = leftPriority === -1 ? MEDIA_INFO_ORDER.length : leftPriority
+    const rightOrder = rightPriority === -1 ? MEDIA_INFO_ORDER.length : rightPriority
+    return leftOrder - rightOrder || left.index - right.index
+  }))
+const mediaInfoVisible = computed(() => mediaInfoEntries.value.length > 0 || tmdbMediaInfo.value != null || isMovieRecord.value)
+const mediaInfoCaption = computed(() => {
+  const count = mediaInfoEntries.value.length
+  if (tmdbMediaInfo.value) return 'TMDB 详情'
+  if (isMovieRecord.value) return count ? `${count} 项信息 · 未匹配 TMDB` : '未匹配 TMDB'
+  return `${count} 项信息`
+})
+const tmdbGalleryRef = ref<HTMLElement | null>(null)
 const downloaderOptions = computed(() => downloaders.value.filter(item => item.status === 1).map(item => ({
   label: item.dlName,
   value: item.dlId
@@ -392,18 +550,97 @@ function formatPatchSize(size?: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MiB`
 }
 
+function destroyTmdbViewer() {
+  tmdbViewer?.destroy()
+  tmdbViewer = null
+}
+
+function originalImageUrl(url: string) {
+  return url.replace(/(\/t\/p\/)(?:w\d+|h\d+|original)(\/)/, '$1original$2')
+}
+
+function openTmdbGallery(index = 0) {
+  const element = tmdbGalleryRef.value
+  if (!element || !tmdbGalleryImages.value.length) return
+  destroyTmdbViewer()
+  const imageIndex = Math.min(index, tmdbGalleryImages.value.length - 1)
+  tmdbViewer = new Viewer(element, {
+    zIndex: 10000,
+    url: 'data-original',
+    navbar: true,
+    title: false,
+    shown() {
+      tmdbViewer?.view(imageIndex)
+    },
+    toolbar: {
+      zoomIn: true,
+      zoomOut: true,
+      oneToOne: true,
+      reset: true,
+      prev: true,
+      play: false,
+      next: true,
+      rotateLeft: false,
+      rotateRight: false,
+      flipHorizontal: false,
+      flipVertical: false
+    }
+  })
+  tmdbViewer.show()
+}
+
+function openTmdbRefreshDialog() {
+  tmdbRefreshName.value = tmdbLookupName.value
+  tmdbRefreshError.value = ''
+  tmdbRefreshOpen.value = true
+}
+
+async function submitTmdbRefresh() {
+  const record = activeRecord.value
+  const name = tmdbRefreshName.value.trim()
+  if (!record || !name || tmdbRefreshing.value) return
+  tmdbRefreshing.value = true
+  tmdbRefreshError.value = ''
+  try {
+    const response = await api.refreshTmdb({recordId: record.recordId, name})
+    if (response.code !== 200 || !response.data) {
+      tmdbRefreshError.value = response.message || '未找到匹配的 TMDB 数据，请尝试其他名称'
+      return
+    }
+    record.recordMediaInfo = {
+      ...(record.recordMediaInfo || {}),
+      tmdb: response.data
+    }
+    tmdbRefreshOpen.value = false
+    notify('TMDB 数据已更新')
+  } catch {
+    tmdbRefreshError.value = 'TMDB 查询失败，请稍后重试'
+  } finally {
+    tmdbRefreshing.value = false
+  }
+}
+
 function mediaInfoLabel(key: string) {
   const labels: Record<string, string> = {
     anime_title: '媒体名称', anime_year: '年份', anime_season: '季度', anime_type: '类型',
     episode_number: '集数', episode_title: '集标题', release_group: '发布组', source: '来源',
     video_resolution: '分辨率', video_term: '视频', audio_term: '音频', subtitles: '字幕',
-    file_extension: '扩展名', release_information: '发布信息'
+    file_extension: '扩展名', release_information: '发布信息', file_name: '文件名'
   }
   return labels[key] || key.replaceAll('_', ' ')
 }
 
 function formatMediaValue(value: unknown) {
   return Array.isArray(value) ? value.join(', ') : String(value)
+}
+
+function textValue(value: unknown) {
+  if (value == null) return ''
+  return String(value).trim()
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === 'object' && !Array.isArray(value)
 }
 
 function unreadCount(feed: Feed) {
@@ -699,8 +936,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', updateToolbarVisibility)
   window.removeEventListener('resize', updateScrollTopVisibility)
+  destroyTmdbViewer()
   recordsRequest++
   patchRequest++
+})
+watch(detailOpen, opened => {
+  if (!opened) destroyTmdbViewer()
 })
 </script>
 
@@ -1054,18 +1295,206 @@ onBeforeUnmount(() => {
   line-height: 1.8;
 }
 
-.reader-article h1 {
+.article-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 16px 0 28px;
+}
+
+.article-title-row h1 {
+  flex: 1;
+  min-width: 0;
   font-size: 25px;
   line-height: 1.6;
-  margin: 16px 0 28px;
+  margin: 0;
   font-weight: 650;
 }
 
+.tmdb-title-poster {
+  position: relative;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 114px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 9px;
+  background: var(--app-surface-soft);
+  box-shadow: 0 5px 14px rgb(15 23 42 / 14%);
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.tmdb-title-poster:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgb(15 23 42 / 20%);
+}
+
+.tmdb-title-poster:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: 3px;
+}
+
+.tmdb-title-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tmdb-gallery {
+  display: none;
+}
+
 .media-info {
+  margin: -12px 0 22px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--app-surface-soft), var(--app-panel));
+}
+
+.media-info :deep(.q-item) {
+  min-height: 58px;
+  padding: 10px 14px;
+}
+
+.media-info :deep(.q-item__section--avatar) {
+  min-width: 36px;
+  color: var(--q-primary);
+}
+
+.media-info :deep(.q-item__label) {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.media-info :deep(.q-item__label--caption) {
+  margin-top: 2px;
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+.media-info :deep(.q-expansion-item__toggle-icon) {
+  color: var(--app-muted);
+  font-size: 20px;
+}
+
+.tmdb-media-info {
+  min-width: 0;
+  padding: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--app-border) 72%, transparent);
+}
+
+.tmdb-refresh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--app-border) 72%, transparent);
+}
+
+.tmdb-refresh-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tmdb-refresh-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.tmdb-refresh-body {
+  display: grid;
+  gap: 16px;
+}
+
+.tmdb-media-body {
+  min-width: 0;
+}
+
+.tmdb-media-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-text);
+  font-size: 16px;
+}
+
+.tmdb-title-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--app-text);
+  text-decoration: none;
+}
+
+.tmdb-title-link:hover {
+  color: var(--q-primary);
+  text-decoration: underline;
+}
+
+.tmdb-media-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 6px;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.tmdb-overview {
+  margin: 12px 0 0;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.tmdb-genres {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin: -12px 0 22px;
+  margin-top: 8px;
+}
+
+.media-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--app-border) 72%, transparent);
+}
+
+.media-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--app-border) 76%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--app-panel) 76%, transparent);
+}
+
+.media-info-label {
+  color: var(--app-muted);
+  font-size: 10px;
+  letter-spacing: .04em;
+}
+
+.media-info-value {
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .rss-content {
@@ -1098,32 +1527,62 @@ onBeforeUnmount(() => {
   background: var(--app-surface-soft);
 }
 
-.code-patch-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
+.code-patch :deep(.q-item) {
+  min-height: 58px;
   padding: 10px 14px;
-  color: var(--app-muted);
-  font-size: 11px;
-  border-bottom: 1px solid var(--app-border);
 }
 
-.code-patch-heading strong {
+.code-patch :deep(.q-item__section--avatar) {
+  min-width: 36px;
+  color: var(--q-primary);
+}
+
+.code-patch :deep(.q-item__label) {
   color: var(--app-text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.code-patch :deep(.q-item__label--caption) {
+  margin-top: 2px;
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+.code-patch :deep(.q-expansion-item__toggle-icon) {
+  color: var(--app-muted);
+  font-size: 20px;
 }
 
 .code-patch-content {
   max-height: 58vh;
   margin: 0;
+  border-top: 1px solid var(--app-border);
   padding: 14px;
   overflow: auto;
   contain: content;
   content-visibility: auto;
   contain-intrinsic-size: 600px;
+  background: var(--app-surface-soft);
   color: var(--app-text-secondary);
   font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: pre;
   tab-size: 4;
+}
+
+.code-patch-content :deep(.hljs-addition) {
+  color: var(--app-success-text);
+  background: color-mix(in srgb, var(--app-success-text) 10%, transparent);
+}
+
+.code-patch-content :deep(.hljs-deletion) {
+  color: var(--q-negative);
+  background: color-mix(in srgb, var(--q-negative) 10%, transparent);
+}
+
+.code-patch-content :deep(.hljs-meta),
+.code-patch-content :deep(.hljs-comment) {
+  color: var(--q-primary);
 }
 
 .patch-loading, .patch-error, .patch-note {
@@ -1284,12 +1743,38 @@ onBeforeUnmount(() => {
     padding: 24px 20px;
   }
 
-  .reader-article h1 {
+  .article-title-row {
+    gap: 12px;
+  }
+
+  .article-title-row h1 {
     font-size: 21px;
   }
 
   .rss-content {
     font-size: 14px;
+  }
+
+  .media-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .tmdb-media-info {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .tmdb-refresh-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+  }
+
+  .tmdb-title-poster {
+    width: 72px;
+    height: 108px;
   }
 }
 </style>

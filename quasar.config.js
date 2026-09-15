@@ -2,7 +2,7 @@ const { configure } = require('quasar/wrappers')
 
 module.exports = configure(function () {
   return {
-    css: ['app.css'],
+    css: ['app.css', '~highlight.js/styles/github.css', '~viewerjs/dist/viewer.css'],
     extras: ['material-icons'],
     build: {
       vueRouterMode: 'history',

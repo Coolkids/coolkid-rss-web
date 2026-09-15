@@ -1,5 +1,5 @@
 import http from './http'
-import type { ApiResponse, DownloadLog, Downloader, Feed, FeedSortItem, PageResult, RssPatch, RssRecord, Rule } from '@/models/domain'
+import type { ApiResponse, DownloadLog, Downloader, Feed, FeedSortItem, PageResult, RssPatch, RssRecord, Rule, TmdbMediaInfo } from '@/models/domain'
 
 const unwrap = <T>(request: Promise<{ data: T }>) => request.then((response) => response.data)
 
@@ -7,6 +7,7 @@ const api = {
   getFeedList: (params?: { full?: boolean }) => unwrap(http.get<ApiResponse<Feed[]>>('/feed/getFeedList', { params })),
   getFeedRecord: (data: Record<string, unknown>) => unwrap(http.post<ApiResponse<PageResult<RssRecord>>>('/feed/getFeedRecord', data)),
   getRecordPatch: (params: { recordId: number | string }) => unwrap(http.get<ApiResponse<RssPatch>>('/feed/recordPatch', { params })),
+  refreshTmdb: (data: { recordId: number | string; name: string }) => unwrap(http.post<ApiResponse<TmdbMediaInfo>>('/feed/refreshTmdb', data)),
   readRecord: (params: { recordId: number | string }) => unwrap(http.get('/feed/readRecord', { params })),
   favRecord: (params: { recordId: number | string; fav: number }) => unwrap(http.get('/feed/favRecord', { params })),
   allRead: (params: { feedId?: number | string }) => unwrap(http.get('/feed/allRead', { params })),

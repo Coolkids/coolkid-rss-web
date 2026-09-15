@@ -56,6 +56,32 @@ export interface RssRecord {
   recordPatchTruncated?: boolean
 }
 
+export interface TmdbMediaInfo {
+  id?: number | string
+  mediaType?: 'movie' | 'tv' | string
+  tmdbUrl?: string
+  name?: string
+  originalName?: string
+  releaseYear?: number | string
+  posterUrl?: string
+  backdropUrl?: string
+  backdropUrls?: string[]
+  photos?: string[]
+  episodePhotos?: string[]
+  images?: string[] | {
+    posters?: string[]
+    backdrops?: string[]
+    stills?: string[]
+  }
+  overview?: string
+  originalLanguage?: string
+  voteAverage?: number
+  voteCount?: number
+  genres?: string[]
+  runtimeMinutes?: number
+  status?: string
+}
+
 export interface RssPatch {
   patch?: string
   patchUrl?: string
