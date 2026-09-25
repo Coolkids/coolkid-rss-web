@@ -120,6 +120,17 @@ export interface DownloadLog {
   dlDate?: string
 }
 
+export interface AnitopyTmdbMiss {
+  missId: number | string
+  recordId?: number | string
+  feedId?: number | string
+  recordTitle: string
+  anitopyResult?: Record<string, unknown>
+  firstSeenAt?: string
+  lastSeenAt?: string
+  seenCount?: number
+}
+
 export interface PageResult<T> {
   records: T[]
   total: number

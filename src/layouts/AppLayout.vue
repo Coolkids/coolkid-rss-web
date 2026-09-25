@@ -72,6 +72,7 @@ const drawerOpen = computed({
 const navigation = [
   { name: 'rss', to: '/rss', label: 'Feed 浏览', shortLabel: '浏览', icon: 'rss_feed' },
   { name: 'download-logs', to: '/download-logs', label: '下载日志', shortLabel: '日志', icon: 'cloud_download' },
+  { name: 'tmdb-misses', to: '/tmdb-misses', label: 'TMDB 未匹配', shortLabel: '未匹配', icon: 'find_in_page' },
   { name: 'feeds', to: '/feeds', label: '订阅管理', shortLabel: '订阅', icon: 'subscriptions' },
   { name: 'rules', to: '/rules', label: '规则管理', shortLabel: '规则', icon: 'rule' },
   { name: 'downloaders', to: '/downloaders', label: '下载工具', shortLabel: '工具', icon: 'settings' }

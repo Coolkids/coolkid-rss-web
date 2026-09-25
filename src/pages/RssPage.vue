@@ -476,7 +476,7 @@ const tmdbGalleryImages = computed(() => {
   return [...new Set(candidates.filter((url): url is string => !!url && httpUrl(url) === true))]
 })
 const mediaInfoEntries = computed(() => Object.entries(activeRecord.value?.recordMediaInfo || {})
-  .filter(([key, value]) => key !== 'tmdb' && value != null && String(value).trim() !== '')
+  .filter(([key, value]) => key !== 'tmdb' && value != null && formatMediaValue(value).trim() !== '')
   .map(([key, value], index) => ({key, label: mediaInfoLabel(key), value: formatMediaValue(value), index}))
   .sort((left, right) => {
     const leftPriority = MEDIA_INFO_ORDER.indexOf(left.key)
@@ -622,6 +622,11 @@ async function submitTmdbRefresh() {
 
 function mediaInfoLabel(key: string) {
   const labels: Record<string, string> = {
+    title: '媒体名称', title_aliases: '别名', media_type: '媒体类型', release_kind: '发布类型',
+    seasons: '季度', episodes: '集数', episode_ranges: '集数范围', declared_episode_count: '集数总数',
+    special_type: '特别篇类型', year: '年份', platforms: '平台', video_codecs: '视频编码',
+    video_encoders: '视频编码器', audio_codecs: '音频编码', subtitle_languages: '字幕语言',
+    subtitle_mode: '字幕模式', release_groups: '发布组', release_version: '发布版本',
     anime_title: '媒体名称', anime_year: '年份', anime_season: '季度', anime_type: '类型',
     episode_number: '集数', episode_title: '集标题', release_group: '发布组', source: '来源',
     video_resolution: '分辨率', video_term: '视频', audio_term: '音频', subtitles: '字幕',
@@ -630,8 +635,21 @@ function mediaInfoLabel(key: string) {
   return labels[key] || key.replaceAll('_', ' ')
 }
 
-function formatMediaValue(value: unknown) {
-  return Array.isArray(value) ? value.join(', ') : String(value)
+function formatMediaValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(item => formatMediaValue(item)).filter(Boolean).join(', ')
+  }
+  if (isObject(value)) {
+    const raw = textValue(value.raw)
+    if (raw) return raw
+    const itemValue = textValue(value.value)
+    if (itemValue) return itemValue
+    return Object.entries(value)
+      .map(([key, item]) => `${key}: ${formatMediaValue(item)}`)
+      .filter(item => !item.endsWith(': '))
+      .join(' · ')
+  }
+  return value == null ? '' : String(value)
 }
 
 function textValue(value: unknown) {
@@ -648,7 +666,8 @@ function unreadCount(feed: Feed) {
   return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
 }
 
-function recordFeed(record: RssRecord) {
+function recordFeed(record: RssRecord | null | undefined) {
+  if (!record) return selectedFeed.value
   if (record.feedId != null) {
     const feed = feeds.value.find(item => String(item.feedId) === String(record.feedId))
     if (feed) return feed

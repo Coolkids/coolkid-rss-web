@@ -1,5 +1,5 @@
 import http from './http'
-import type { ApiResponse, DownloadLog, Downloader, Feed, FeedSortItem, PageResult, RssPatch, RssRecord, Rule, TmdbMediaInfo } from '@/models/domain'
+import type { AnitopyTmdbMiss, ApiResponse, DownloadLog, Downloader, Feed, FeedSortItem, PageResult, RssPatch, RssRecord, Rule, TmdbMediaInfo } from '@/models/domain'
 
 const unwrap = <T>(request: Promise<{ data: T }>) => request.then((response) => response.data)
 
@@ -20,6 +20,7 @@ const api = {
   dldelete: (params: { dlId?: number | string }) => unwrap(http.get('/dl/delete', { params })),
   dlrecord: (data: Record<string, unknown>) => unwrap(http.post('/dl/download', data)),
   getDownLog: (data: Record<string, unknown>) => unwrap(http.post<ApiResponse<PageResult<DownloadLog>>>('/dl/log', data)),
+  getAnitopyTmdbMissPage: (data: Record<string, unknown>) => unwrap(http.post<ApiResponse<PageResult<AnitopyTmdbMiss>>>('/anitopyTmdbMiss/page', data)),
   rulelist: (data: Record<string, unknown>) => unwrap(http.post<ApiResponse<Rule[]>>('/rule/list', data)),
   ruleitem: (params: { ruleId?: number | string }) => unwrap(http.get<ApiResponse<Feed[]>>('/rule/item', { params })),
   ruletest: (data: Record<string, unknown>) => unwrap(http.post<ApiResponse<RssRecord[]>>('/rule/testRule', data)),
