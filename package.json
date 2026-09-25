@@ -1,6 +1,6 @@
 {
   "name": "coolkid-rss-web",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "private": true,
   "description": "Responsive RSS management UI built with Vue 3 and Quasar",
   "scripts": {
